@@ -5,6 +5,8 @@ import userDefinedAction.UserDefinedAction
 import reflect.runtime.currentMirror
 import scala.tools.reflect.ToolBox
 import io.Source
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * Scala native compiler.
@@ -12,6 +14,8 @@ import io.Source
  * @constructor create a compiler object with default configuration. 
  */
 class ScalaCompiler {
+  
+  private final val logger = Logger(LoggerFactory.getLogger(this.getClass))
   
   private var _config = new CompilerConfig()
   private val toolbox = currentMirror.mkToolBox()
@@ -35,14 +39,18 @@ class ScalaCompiler {
    * @param source the source code in string format.
    */
   def compile(source : String) : UserDefinedAction = {
+    def handleException(e : Exception) : UserDefinedAction = {
+      logger.warn("Failed to compile source code.", e)
+      return null
+    }
+    
     try {
       val tree = toolbox.parse(source)
       val compiledCode = toolbox.compile(tree)
   
       return compiledCode().asInstanceOf[UserDefinedAction]
     } catch {
-      // TODO log this
-      case e: Exception => null
+      case e: Exception => handleException(e)
     }
   }
 }

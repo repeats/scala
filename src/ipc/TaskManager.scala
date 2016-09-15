@@ -10,8 +10,12 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import userDefinedAction.Activation
 import userDefinedAction.activationBuilder
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
 
 class TaskManager(val client : RepeatClient) {
+  
+  private final val logger = Logger(LoggerFactory.getLogger(this.getClass))
   
   private var baseId : Long = 1
   private val compiler = new ScalaCompiler()
@@ -50,6 +54,14 @@ class TaskManager(val client : RepeatClient) {
           )
     }
     
+    def handleException(e : Exception) : JsValue = {
+      logger.warn("Cannot compile file " + fileName, e)
+      return responseGenerator.generateResponse(
+            responseGenerator.Failure,
+            JsString("Cannot compile file " + fileName)
+          )
+    }
+    
     try {
       var newTask = compiler.compileFromFile(fileName)
       newTask.fileName = fileName
@@ -63,11 +75,7 @@ class TaskManager(val client : RepeatClient) {
             "file_name" -> fileName
           ))
     } catch {
-      // TODO more detail logging
-      case e : Exception => responseGenerator.generateResponse(
-            responseGenerator.Failure,
-            JsString("Cannot compile file " + fileName)
-          )
+      case e : Exception => handleException(e)
     }
   }
   
@@ -79,14 +87,19 @@ class TaskManager(val client : RepeatClient) {
           )
     }
     
+    def handleException(e : Exception) : JsValue = {
+      logger.warn("Cannot execute task id " + id, e)
+      return responseGenerator.generateResponse(
+            responseGenerator.Failure,
+            JsString("Cannot execute task id " + id)
+          )
+    }
+    
     val task = tasks.get(id).get
     try {
       task.execute(client, activation)
     } catch {
-      case e : Exception => responseGenerator.generateResponse(
-            responseGenerator.Failure,
-            JsString("Cannot execute task id " + id)
-          )
+      case e : Exception => handleException(e)
     }
 
     return responseGenerator.generateResponse(

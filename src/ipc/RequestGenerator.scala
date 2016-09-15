@@ -6,8 +6,12 @@ import play.api.libs.json.JsString
 import play.api.libs.json.JsNumber
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
 
 abstract class RequestGenerator(var client : RepeatClient) {
+  
+  private final val logger = Logger(LoggerFactory.getLogger(this.getClass))
   
   private final val RequestTimeoutSecond = 1
   
@@ -35,8 +39,7 @@ abstract class RequestGenerator(var client : RepeatClient) {
     
     if (blockingWait) {
       if (!signal.tryAcquire(RequestTimeoutSecond, TimeUnit.SECONDS)) {
-        // TODO use logging
-        println("Timeout waiting for request to finish.")
+        logger.info("Timeout waiting for request to finish.")
         return None;
       }
     }

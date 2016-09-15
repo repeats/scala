@@ -20,10 +20,13 @@ import java.io.PrintWriter
 import java.io.InputStreamReader
 import java.io.BufferedReader
 import play.api.libs.json.Json
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
 
 class RepeatClient {
   
-  private final val MaxBufferSize = 1024
+  private final val logger = Logger(LoggerFactory.getLogger(this.getClass))
+  
   private final val ServerTimeoutMilliseconds = 10 * 1000
   private final val ClientTimeoutMilliseconds =  (ServerTimeoutMilliseconds * 0.3).toInt
   private final val Delimiter : Char = 2
@@ -41,6 +44,8 @@ class RepeatClient {
   private var socket : Socket = null
   private var inputStream : BufferedReader = null
   private var outputStream : PrintWriter = null
+  private var readThread : Thread = null
+  private var writeThread : Thread = null
   
   object State extends Enumeration {
     type State = Value
@@ -60,6 +65,7 @@ class RepeatClient {
       receivedJSON.put(id, resultObject.get);
       
       // Notify the caller that message with this id has been replied.
+      logger.trace("Signalling response for id " + id)
       receiveSignal.get(id).release();
     } else if (requestType.equals("task")) { // Then pass on to the task manager
       val respondingThread = new Thread {
@@ -70,14 +76,11 @@ class RepeatClient {
               "id" -> id,
               "content" -> response
           ).toString())
-
-//          println("Added to send queue")
         }
       }
       respondingThread.start()
     } else {
-      // TODO log this instead
-      println("Unknown id " + id + ". Drop message...");
+      logger.debug("Unknown id " + id + ". Drop message...")
     }
   }
   
@@ -92,8 +95,7 @@ class RepeatClient {
         try {
           processMessage(Json.parse(currentMessage.toString()))
         } catch {
-          // TODO more detail logging
-          case e : Exception => println("Exception parsing message " + currentMessage.toString())
+          case e : Exception => logger.warn("Exception parsing json message " + currentMessage.toString(), e)
         }
         currentMessage.clear()
       } else {
@@ -117,7 +119,7 @@ class RepeatClient {
       if (data == null) { // Then send a keep alive
         requests.systemHostRequest.keepAlive()
       } else { // Send the data
-        println("Sending " + data)
+        logger.trace("Sending " + data)
         val toSend = "%s%s%s%s%s".format(Delimiter, Delimiter, data, Delimiter, Delimiter)
         outputStream.println(toSend)
         outputStream.flush()
@@ -133,19 +135,20 @@ class RepeatClient {
   
   def start() = {
     isTerminated = false
+    logger.info("Binding socket to host " + DefaultHost + " and port " + DefaultPort)
     socket = new Socket(InetAddress.getByName(DefaultHost), DefaultPort)
     inputStream = new BufferedReader(new InputStreamReader(socket.getInputStream()))
     outputStream = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream)))
     
     requests.systemClientRequest.identify(socket.getLocalPort())
     
-    val readThread = new Thread {
+    readThread = new Thread {
       override def run = {
         read()
       }
     }
     
-    val writeThread = new Thread {
+    writeThread = new Thread {
       override def run = {
         write()
       }
@@ -156,7 +159,17 @@ class RepeatClient {
   }
   
   def stop() = {
-    isTerminated = true
-    socket.close()
+    if (!isTerminated) {
+      isTerminated = true
+      
+      logger.info("Waiting for read thread to terminate...")
+      readThread.join()
+      logger.info("Read thread to terminated...")
+      logger.info("Waiting for write thread to terminate...")
+      writeThread.join()
+      logger.info("Write thread to terminated...")
+      socket.close()
+      logger.info("Socket closed.")
+    }
   }
 }
