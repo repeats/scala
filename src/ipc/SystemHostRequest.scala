@@ -10,7 +10,7 @@ class SystemHostRequest(client : RepeatClient) extends RequestGenerator(client) 
     return output
   }
   
-  def identify() = {
+  def keepAlive() = {
     val data = getDefaultData()
     data.action = "keep_alive"
     data.params = Seq[Any]()

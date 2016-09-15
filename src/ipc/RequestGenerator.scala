@@ -4,33 +4,51 @@ import play.api.libs.json.JsValue
 import play.api.libs.json.Json
 import play.api.libs.json.JsString
 import play.api.libs.json.JsNumber
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 
 abstract class RequestGenerator(var client : RepeatClient) {
   
-  private var baseId = 0
-  
-  private def generateId() : Long = synchronized {
-    baseId += 1
-    return baseId - 1
-  }
+  private final val RequestTimeoutSecond = 1
   
   def getDefaultData() : RequestData;
   
-  def generateRequest(requestData : RequestData) : JsValue = {
+  def generateRequest(requestData : RequestData, id : Long) : JsValue = {
     Json.obj(
       "type" -> requestData.requestType,
-      "id" -> generateId(),
+      "id" -> id,
       "content" -> Json.obj(
-        "content" -> Json.obj(
-          "device" -> requestData.device,
-          "action" -> requestData.action,
-          "parameters" -> Json.arr(requestData.params.map(x => if (x.isInstanceOf[Int]) JsNumber(x.asInstanceOf[Int]) else JsString(x.toString())))
-        )
+        "device" -> requestData.device,
+        "action" -> requestData.action,
+        "parameters" -> requestData.params.map(x => if (x.isInstanceOf[Int]) JsNumber(x.asInstanceOf[Int]) else JsString(x.toString()))
       )
     )
   }
   
-  def sendRequest(data : RequestData, blockingWait : Boolean = true) : JsValue = {
-    return null;
+  def sendRequest(data : RequestData, blockingWait : Boolean = true) : Option[JsValue] = {
+    val id = requestIdGenerator.generateId()
+    val stringData = generateRequest(data, id).toString()
+    
+    val signal = new Semaphore(0)
+    client.receiveSignal.put(id, signal)
+    client.sendQueue.add(stringData)
+    
+    if (blockingWait) {
+      if (!signal.tryAcquire(RequestTimeoutSecond, TimeUnit.SECONDS)) {
+        // TODO use logging
+        println("Timeout waiting for request to finish.")
+        return None;
+      }
+    }
+    
+    client.receiveSignal.remove(id)
+    if (client.receivedJSON.contains(id)) {
+      val result = client.receivedJSON.remove(id)
+      if (result != null) {
+        return Some(result)
+      }
+    }
+
+    return None;
   }
 }

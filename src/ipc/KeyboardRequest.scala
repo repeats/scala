@@ -14,20 +14,20 @@ class KeyboardRequest(client : RepeatClient) extends RequestGenerator(client) {
     val data = getDefaultData()
     data.action = "type"
     data.params = keys
-    sendRequest(data)
+    sendRequest(data, false)
   }
   
   def typeStrings(strings : String*) = {
     val data = getDefaultData()
     data.action = "type_string"
     data.params = strings
-    sendRequest(data)
+    sendRequest(data, false)
   }
   
   def combination(keys : Int*) = {
     val data = getDefaultData()
     data.action = "combination"
     data.params = keys
-    sendRequest(data)
+    sendRequest(data, false)
   }
 }

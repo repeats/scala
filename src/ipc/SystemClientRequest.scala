@@ -10,10 +10,10 @@ class SystemClientRequest(client : RepeatClient) extends RequestGenerator(client
     return output
   }
   
-  def identify() = {
+  def identify(port : Int) = {
     val data = getDefaultData()
     data.action = "identify"
-    data.params = Seq[String]("scala", "12345") // TODO fill in the real port
+    data.params = Seq[String]("scala", port.toString()) // TODO fill in the real port
     
     this.sendRequest(data, false)
   }

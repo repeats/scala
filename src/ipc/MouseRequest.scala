@@ -1,5 +1,7 @@
 package ipc
 
+import play.api.libs.json.JsValue
+
 class MouseRequest(client : RepeatClient) extends RequestGenerator(client) {
   
   override def getDefaultData() : RequestData = {
@@ -15,7 +17,7 @@ class MouseRequest(client : RepeatClient) extends RequestGenerator(client) {
     data.action = "left_click"
     data.params = if (x.isEmpty || y.isEmpty) List[Int]() else List[Int](x.get, y.get);
     
-    sendRequest(data)
+    sendRequest(data, false)
   }
   
   def rightClick(x : Option[Int] = None, y : Option[Int] = None) = {
@@ -23,49 +25,50 @@ class MouseRequest(client : RepeatClient) extends RequestGenerator(client) {
     data.action = "right_click"
     data.params = if (x.isEmpty || y.isEmpty) List[Int]() else List[Int](x.get, y.get);
     
-    sendRequest(data)
+    sendRequest(data, false)
   }
   
   def move(x : Int, y : Int) = {
     val data = getDefaultData()
     data.action = "move"
     data.params = List[Int](x, y)
-    sendRequest(data)
+    sendRequest(data, false)
   }
   
   def moveBy(x : Int, y : Int) = {
     val data = getDefaultData()
     data.action = "move_by"
     data.params = List[Int](x, y)
-    sendRequest(data)
+    sendRequest(data, false)
   }
   
   def drag(x : Int, y : Int) = {
     val data = getDefaultData()
     data.action = "drag"
     data.params = List[Int](x, y)
-    sendRequest(data)
+    sendRequest(data, false)
   }
   
   def dragBy(x : Int, y : Int) = {
     val data = getDefaultData()
     data.action = "drag_by"
     data.params = List[Int](x, y)
-    sendRequest(data)
+    sendRequest(data, false)
   }
   
-  def getPosition() = {
+  def getPosition() : Seq[Int] = {
     val data = getDefaultData()
     data.action = "get_position"
     data.params = List[Int]()
-    sendRequest(data)
+    
+    return sendRequest(data).get.as[Seq[JsValue]].map { x => x.as[Int] }
   }
 
-  def getColor(x : Option[Int] = None, y : Option[Int] = None) = {
+  def getColor(x : Option[Int] = None, y : Option[Int] = None) : Seq[Int] = {
     val data = getDefaultData()
     data.action = "get_color"
     data.params = if (x.isEmpty || y.isEmpty) List[Int]() else List[Int](x.get, y.get);
     
-    sendRequest(data)
+    sendRequest(data).get.as[Seq[JsValue]].map { x => x.as[Int] }
   }
 }
