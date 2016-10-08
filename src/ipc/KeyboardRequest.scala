@@ -10,6 +10,20 @@ class KeyboardRequest(client : RepeatClient) extends RequestGenerator(client) {
     return output
   }
   
+  def press(key : Int) = {
+    val data = getDefaultData()
+    data.action = "type"
+    data.params = List[Int](key)
+    sendRequest(data, false)
+  }
+  
+  def release(key : Int) = {
+    val data = getDefaultData()
+    data.action = "release"
+    data.params = List[Int](key)
+    sendRequest(data, false)
+  }
+  
   def typeKeys(keys : Int*) = {
     val data = getDefaultData()
     data.action = "type"

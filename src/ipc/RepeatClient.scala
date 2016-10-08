@@ -29,6 +29,7 @@ class RepeatClient {
   
   private final val ServerTimeoutMilliseconds = 10 * 1000
   private final val ClientTimeoutMilliseconds =  (ServerTimeoutMilliseconds * 0.3).toInt
+  private final val IdentificationDelayMillisecond = 500
   private final val Delimiter : Char = 2
   
   private final var DefaultHost = "localhost"
@@ -140,8 +141,6 @@ class RepeatClient {
     inputStream = new BufferedReader(new InputStreamReader(socket.getInputStream()))
     outputStream = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream)))
     
-    requests.systemClientRequest.identify(socket.getLocalPort())
-    
     readThread = new Thread {
       override def run = {
         read()
@@ -156,6 +155,14 @@ class RepeatClient {
     
     readThread.start()
     writeThread.start()
+    
+    val identificationThread = new Thread {
+      override def run = {
+        Thread.sleep(IdentificationDelayMillisecond)
+        requests.systemClientRequest.identify(socket.getLocalPort())
+      }
+    }
+    identificationThread.start()
   }
   
   def stop() = {

@@ -12,6 +12,30 @@ class MouseRequest(client : RepeatClient) extends RequestGenerator(client) {
     return output
   }
   
+  def press(mask : Int) = {
+    val data = getDefaultData()
+    data.action = "press"
+    data.params = List[Int](mask)
+    
+    sendRequest(data, false)
+  }
+  
+  def release(mask : Int) = {
+    val data = getDefaultData()
+    data.action = "release"
+    data.params = List[Int](mask)
+    
+    sendRequest(data, false)
+  }
+  
+  def click(mask : Int) = {
+    val data = getDefaultData()
+    data.action = "click"
+    data.params = List[Int](mask)
+    
+    sendRequest(data, false)
+  }
+  
   def leftClick(x : Option[Int] = None, y : Option[Int] = None) = {
     val data = getDefaultData()
     data.action = "left_click"
